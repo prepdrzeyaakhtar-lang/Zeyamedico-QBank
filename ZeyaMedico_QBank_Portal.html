@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZeyaMedico QBank</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f6f8fc;color:#172554}
+header{background:linear-gradient(135deg,#172554,#2563eb);color:#fff;padding:24px 18px}
+header h1{margin:0;font-size:28px} header p{margin:7px 0 0;opacity:.9}
+.wrap{max-width:1000px;margin:auto;padding:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.stat{background:#fff;border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 8px #00000010}
+.stat b{display:block;font-size:22px;color:#2563eb}
+.controls{background:#fff;padding:15px;border-radius:14px;margin:16px 0;box-shadow:0 2px 8px #00000010}
+select,input,button{font:inherit}
+select,input{width:100%;padding:11px;border:1px solid #dbe2ef;border-radius:9px;margin:5px 0 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{border:0;border-radius:10px;padding:12px 15px;font-weight:bold;cursor:pointer}
+.primary{background:#172554;color:white;width:100%}.next{background:#2563eb;color:white;width:100%;margin-top:12px}
+.question{background:#fff;border-radius:16px;padding:18px;box-shadow:0 3px 12px #00000012}
+.badges{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.badge{padding:6px 9px;border-radius:20px;background:#eaf2ff;color:#1d4ed8;font-size:12px;font-weight:bold}
+.pyq{background:#ffe4e6;color:#be123c}.usmle{background:#ede9fe;color:#6d28d9}
+.option{display:block;width:100%;text-align:left;background:#f8fafc;border:1px solid #dbe2ef;margin:9px 0;color:#172554}
+.option:hover{background:#eef4ff}.correct{background:#dcfce7!important;border-color:#16a34a!important}.incorrect{background:#fee2e2!important;border-color:#dc2626!important}
+.explanation{display:none;margin-top:15px;padding:15px;background:#fff7ed;border-left:5px solid #f97316;border-radius:10px;line-height:1.5}
+.wrongbox{display:none;margin-top:12px;padding:12px;background:#fee2e2;border:1px solid #fecaca;border-radius:10px;color:#991b1b}
+.footer{text-align:center;padding:30px;color:#64748b;font-size:13px}
+@media(max-width:650px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}header h1{font-size:23px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<h1>🧠 ZeyaMedico QBank</h1>
+<p>NEET-PG • FMGE • USMLE • PYQ Revision</p>
+</div></header>
+
+<main class="wrap">
+<div class="stats">
+<div class="stat"><b id="total">0</b>Total Q</div>
+<div class="stat"><b id="answered">0</b>Answered</div>
+<div class="stat"><b id="score">0%</b>Accuracy</div>
+<div class="stat"><b id="wrong">0</b>Wrong / Revise</div>
+</div>
+
+<section class="controls">
+<div class="grid">
+<div><label><b>Subject</b></label><select id="subject"></select></div>
+<div><label><b>Topic</b></label><select id="topic"></select></div>
+</div>
+<div class="grid">
+<div><label><b>Exam</b></label><select id="exam">
+<option value="ALL">All</option><option>NEET-PG</option><option>FMGE</option><option>USMLE</option>
+</select></div>
+<div><label><b>Mode</b></label><select id="mode">
+<option value="ALL">All Questions</option><option value="PYQ">⭐ Previous Year / High-yield</option><option value="WRONG">❌ Wrong Questions — Revise</option>
+</select></div>
+</div>
+</section>
+
+<section class="question">
+<div class="badges">
+<span class="badge" id="qSubject">Subject</span>
+<span class="badge" id="qTopic">Topic</span>
+<span class="badge pyq" id="qPyq">PYQ / HIGH-YIELD</span>
+<span class="badge usmle" id="qExam">FMGE</span>
+</div>
+<h2 id="qText">Loading...</h2>
+<div id="options"></div>
+<div class="wrongbox" id="wrongbox">❌ You got this question wrong. <b>Keep this in your Revision list.</b></div>
+<div class="explanation" id="explanation"></div>
+<button class="next" onclick="nextQuestion()">Next Question →</button>
+</section>
+
+<div class="footer">ZeyaMedico • Build → Practice → Track mistakes → Revise</div>
+</main>
+
+<script>
+const subjects = {
+"Anatomy":["Upper Limb","Lower Limb","Thorax","Abdomen","Pelvis & Perineum","Head & Neck","Neuroanatomy","Embryology","Histology"],
+"Physiology":["General Physiology","Blood","Nerve & Muscle","CVS","Respiratory","GIT","Renal","Endocrine","Reproductive"],
+"Biochemistry":["Molecular Biology","Enzymes","Carbohydrates","Lipids","Proteins","Vitamins","Genetics","Clinical Biochemistry"],
+"Pathology":["Cell Injury","Inflammation","Neoplasia","Hematology","RBC Disorders","WBC Disorders","Renal Pathology","Liver Pathology","GIT Pathology"],
+"Pharmacology":["General Pharmacology","ANS","CNS","CVS","Autacoids","Antimicrobials","Endocrine","Chemotherapy","Toxicology"],
+"Microbiology":["Bacteriology","Virology","Mycology","Parasitology","Immunology","Sterilization"],
+"Forensic Medicine":["Identification","Injuries","Poisoning","Sexual Offences","Forensic Toxicology","Medical Jurisprudence"],
+"PSM":["Epidemiology","Biostatistics","Vaccines","Screening","National Programs","Nutrition","Environmental Health"],
+"ENT":["Ear","Nose","Throat","Larynx","Head & Neck","Audiology"],
+"Ophthalmology":["Cornea","Lens","Glaucoma","Retina","Uvea","Neuro-ophthalmology","Squint","Oculoplasty"],
+"Medicine":["Cardiology","Respiratory","Gastroenterology","Neurology","Nephrology","Endocrinology","Rheumatology","Hematology","Infectious Disease"],
+"Dermatology":["Bacterial","Viral","Fungal","Parasitic","Papulosquamous","Connective Tissue","Blistering Disorders","Tumors"],
+"Psychiatry":["Mood Disorders","Psychosis","Anxiety","Substance Use","Child Psychiatry","Psychopharmacology"],
+"Pediatrics":["Neonatology","Growth & Development","Respiratory","Cardiology","GIT","Neurology","Infections","Genetics"],
+"Surgery":["General Surgery","Trauma","GI Surgery","Hepatobiliary","Breast","Endocrine Surgery","Urology","Vascular Surgery"],
+"Orthopedics":["Fractures","Trauma","Spine","Pediatric Orthopedics","Bone Tumors","Arthritis","Sports Injuries"],
+"Obstetrics":["Antenatal Care","Hypertension","Labor","PPH","Placenta","Fetal Medicine","Puerperium"],
+"Gynaecology":["Contraception","Infertility","Ectopic Pregnancy","Menstrual Disorders","Fibroid","Ovarian Tumors","Cervix","Breast"],
+"Radiology":["X-ray","Ultrasound","CT","MRI","Neuroradiology","Chest","Abdomen","Interventional Radiology"]
+};
+
+const questions = [
+{subject:"Obstetrics",topic:"PPH",exam:"FMGE",pyq:true,q:"The most common cause of primary postpartum hemorrhage is:",o:["Trauma","Retained placenta","Uterine atony","Coagulopathy"],a:2,e:"Uterine atony is the most common cause of primary PPH. Think of the 4 Ts: Tone, Trauma, Tissue, Thrombin. Tone is the commonest."},
+{subject:"Gynaecology",topic:"Ectopic Pregnancy",exam:"NEET-PG",pyq:true,q:"The most common site of ectopic pregnancy is:",o:["Isthmus","Ampulla","Fimbria","Cervix"],a:1,e:"The ampulla is the commonest site of tubal ectopic pregnancy."},
+{subject:"Pediatrics",topic:"Respiratory",exam:"FMGE",pyq:true,q:"The most common cause of bronchiolitis is:",o:["RSV","Influenza virus","Adenovirus","Rhinovirus"],a:0,e:"Respiratory syncytial virus (RSV) is the classic and most common cause of acute bronchiolitis."},
+{subject:"Ophthalmology",topic:"Lens",exam:"NEET-PG",pyq:true,q:"The most common cause of reversible blindness worldwide is:",o:["Glaucoma","Cataract","Retinal detachment","Optic neuritis"],a:1,e:"Cataract is a major reversible cause of blindness because vision can be restored after cataract extraction."},
+{subject:"Pharmacology",topic:"ANS",exam:"NEET-PG",pyq:true,q:"Which drug is used for organophosphate poisoning?",o:["Atropine","Naloxone","Flumazenil","Vitamin K"],a:0,e:"Atropine blocks muscarinic effects. Pralidoxime is also used to reactivate acetylcholinesterase when given early."},
+{subject:"Pathology",topic:"Neoplasia",exam:"USMLE",pyq:false,q:"A malignant tumor arising from epithelial tissue is called:",o:["Sarcoma","Carcinoma","Lymphoma","Melanoma"],a:1,e:"Carcinoma is a malignant neoplasm of epithelial origin. Sarcoma arises from mesenchymal/connective tissue."},
+{subject:"Anatomy",topic:"Upper Limb",exam:"NEET-PG",pyq:true,q:"The nerve most commonly injured in a surgical neck fracture of humerus is:",o:["Radial","Ulnar","Median","Axillary"],a:3,e:"The axillary nerve winds around the surgical neck of the humerus and can be injured in fractures there."},
+{subject:"Physiology",topic:"CVS",exam:"FMGE",pyq:true,q:"The normal pacemaker of the heart is:",o:["AV node","SA node","Bundle of His","Purkinje fibers"],a:1,e:"The sinoatrial node has the highest intrinsic rate of spontaneous depolarization and normally controls heart rhythm."},
+{subject:"Biochemistry",topic:"Vitamins",exam:"NEET-PG",pyq:true,q:"Which vitamin deficiency causes megaloblastic anemia with neurologic manifestations?",o:["B1","B6","B12","C"],a:2,e:"Vitamin B12 deficiency causes megaloblastic anemia plus neurologic manifestations such as subacute combined degeneration."},
+{subject:"Microbiology",topic:"Bacteriology",exam:"FMGE",pyq:true,q:"Gram-positive cocci in clusters are classically:",o:["Streptococci","Staphylococci","Neisseria","Enterococci"],a:1,e:"Staphylococci are Gram-positive cocci arranged in clusters; Streptococci form chains or pairs."}
+];
+
+let answered=Number(localStorage.getItem("zm_answered")||0), correct=Number(localStorage.getItem("zm_correct")||0);
+let wrongIds=JSON.parse(localStorage.getItem("zm_wrong")||"[]");
+let current=null, filtered=[];
+
+const subjectEl=document.getElementById("subject"), topicEl=document.getElementById("topic");
+subjectEl.innerHTML='<option value="ALL">All Subjects</option>'+Object.keys(subjects).map(s=>`<option>${s}</option>`).join("");
+subjectEl.onchange=updateTopics;
+document.getElementById("topic").onchange=renderQuestion;
+document.getElementById("exam").onchange=renderQuestion;
+document.getElementById("mode").onchange=renderQuestion;
+
+function updateTopics(){
+ let s=subjectEl.value;
+ topicEl.innerHTML='<option value="ALL">All Topics</option>'+ (s==="ALL"?[]:subjects[s]).map(t=>`<option>${t}</option>`).join("");
+ renderQuestion();
+}
+updateTopics();
+
+function getPool(){
+ const s=subjectEl.value,t=topicEl.value,ex=document.getElementById("exam").value,mode=document.getElementById("mode").value;
+ let pool=questions.filter(x=>(s==="ALL"||x.subject===s)&&(t==="ALL"||x.topic===t)&&(ex==="ALL"||x.exam===ex));
+ if(mode==="PYQ") pool=pool.filter(x=>x.pyq);
+ if(mode==="WRONG") pool=pool.filter((x,i)=>wrongIds.includes(questions.indexOf(x)));
+ return pool.length?pool:questions.filter(x=>(s==="ALL"||x.subject===s));
+}
+function renderQuestion(){
+ filtered=getPool(); current=filtered[Math.floor(Math.random()*filtered.length)];
+ if(!current){document.getElementById("qText").textContent="No question found.";return}
+ document.getElementById("qSubject").textContent=current.subject;
+ document.getElementById("qTopic").textContent=current.topic;
+ document.getElementById("qPyq").style.display=current.pyq?"inline-block":"none";
+ document.getElementById("qExam").textContent=current.exam;
+ document.getElementById("qText").textContent=current.q;
+ document.getElementById("explanation").style.display="none";
+ document.getElementById("wrongbox").style.display="none";
+ document.getElementById("options").innerHTML=current.o.map((x,i)=>`<button class="option" onclick="answer(${i},this)">${String.fromCharCode(65+i)}. ${x}</button>`).join("");
+ updateStats();
+}
+function answer(i,btn){
+ if(document.querySelector(".option.correct,.option.incorrect")) return;
+ answered++;
+ const ok=i===current.a;
+ if(ok){correct++;btn.classList.add("correct")}
+ else{btn.classList.add("incorrect");document.querySelectorAll(".option")[current.a].classList.add("correct");const id=questions.indexOf(current);if(!wrongIds.includes(id))wrongIds.push(id);document.getElementById("wrongbox").style.display="block";}
+ document.getElementById("explanation").innerHTML="<b>Why?</b><br>"+current.e+"<br><br><b>Option review:</b><br>"+current.o.map((x,n)=>`${String.fromCharCode(65+n)}. ${x} — ${n===current.a?"Correct answer":"Not the best answer"}`).join("<br>");
+ document.getElementById("explanation").style.display="block";
+ localStorage.setItem("zm_answered",answered);localStorage.setItem("zm_correct",correct);localStorage.setItem("zm_wrong",JSON.stringify(wrongIds));updateStats();
+}
+function nextQuestion(){renderQuestion()}
+function updateStats(){
+ document.getElementById("total").textContent=questions.length;
+ document.getElementById("answered").textContent=answered;
+ document.getElementById("wrong").textContent=wrongIds.length;
+ document.getElementById("score").textContent=answered?Math.round(correct/answered*100)+"%":"0%";
+}
+</script>
+</body>
+</html>
